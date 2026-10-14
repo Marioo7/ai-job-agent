@@ -1,0 +1,23 @@
+{
+  "name": "ai-job-agent",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Personal AI Job Application Agent: Telegram monitoring, CV matching, approval-gated Gmail applications.",
+  "workspaces": ["shared", "core", "backend", "worker", "frontend"],
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "dev:frontend": "npm run dev -w frontend",
+    "dev:backend": "npm run dev -w backend",
+    "dev:worker": "npm run dev -w worker",
+    "build": "npm run build -w frontend && npm run build -w backend && npm run build -w worker",
+    "test": "vitest run",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "npm run typecheck && node scripts/check-secrets.mjs",
+    "gen:key": "node -e \"console.log(require('crypto').randomBytes(32).toString('base64'))\""
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.4",
+    "vitest": "^2.1.8"
+  }
+}

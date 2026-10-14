@@ -1,0 +1,17 @@
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+*.log
+.firebase/
+firebase-debug.log
+serviceAccount*.json
+*-service-account*.json
+backend/.data/
+.data/
+coverage/
+*.session
+.history/
+*.pem
+*.key

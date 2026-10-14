@@ -1,0 +1,38 @@
+# Render "Blueprint": one FREE web service that runs the API + the Telegram worker + the optional auto-apply cycle.
+# Values marked sync:false are asked for when you create the Blueprint (secrets are never stored in Git).
+services:
+  - type: web
+    name: job-agent
+    runtime: node
+    plan: free
+    buildCommand: npm ci --include=dev && npm run build -w backend
+    startCommand: node backend/dist/index.js
+    healthCheckPath: /api/health
+    envVars:
+      - { key: NODE_VERSION, value: "22" }
+      - { key: NODE_ENV, value: production }
+      - { key: AUTH_MODE, value: firebase }
+      - { key: DB_MODE, value: firestore }
+      - { key: STORAGE_MODE, value: firestore }       # CVs are kept in Firestore (free plan; the disk is ephemeral)
+      - { key: TRUST_PROXY, value: "1" }
+      - { key: RUN_WORKER_IN_BACKEND, value: "true" } # Telegram worker inside this same free service
+      - { key: TELEGRAM_MODE, value: real }
+      - { key: GMAIL_MODE, value: google }
+      - { key: ALLOW_AUTO_APPLY, value: "false" }     # change to "true" only if you want the automatic mode
+      - { key: WORKER_TICK_SEC, value: "60" }         # fewer Firestore writes on the free quota
+      - { key: WORKER_OFFLINE_AFTER_SEC, value: "180" }
+      - { key: TELEGRAM_POLL_INTERVAL_SEC, value: "300" }
+      - { key: AI_PROVIDER, value: mock }             # gemini if you add a key
+      - { key: AI_MODEL, sync: false }
+      - { key: AI_API_KEY, sync: false }
+      - { key: FRONTEND_ORIGIN, sync: false }
+      - { key: ALLOWED_EMAILS, sync: false }
+      - { key: FIREBASE_PROJECT_ID, sync: false }
+      - { key: FIREBASE_SERVICE_ACCOUNT_JSON, sync: false }
+      - { key: SECRETS_ENCRYPTION_KEY, sync: false }
+      - { key: OWNER_UID, sync: false }
+      - { key: TELEGRAM_API_ID, sync: false }
+      - { key: TELEGRAM_API_HASH, sync: false }
+      - { key: GOOGLE_OAUTH_CLIENT_ID, sync: false }
+      - { key: GOOGLE_OAUTH_CLIENT_SECRET, sync: false }
+      - { key: GOOGLE_OAUTH_REDIRECT_URI, sync: false }

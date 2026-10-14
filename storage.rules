@@ -1,0 +1,9 @@
+rules_version = '2';
+// CV files are read/written only by the backend (Admin SDK). No client access, no public URLs.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
