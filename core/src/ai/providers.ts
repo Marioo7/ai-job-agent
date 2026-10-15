@@ -130,7 +130,8 @@ async function fetchWithRetry(
         signal: AbortSignal.timeout(Math.min(120_000, remaining)),
       });
 
-      const retryable = [408, 429, 500, 502, 503, 504]
+      // Let Gemini handle 429 so it can switch to a fallback model.
+      const retryable = [408, 500, 502, 503, 504]
         .includes(response.status);
 
       if (!retryable) {
@@ -242,56 +243,84 @@ async function http(url: string, init: RequestInit): Promise<unknown> {
 
 
 export class GeminiProvider extends LlmProvider {
-  constructor(private apiKey: string, private model: string, maxChars: number) { super('gemini', maxChars); }
+  private readonly models: string[];
 
-protected async complete(system: string, user: string, json: boolean): Promise<string> {
-  const data = (await http(
-    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(this.model)}:generateContent`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': this.apiKey,
-      },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: system }] },
-        contents: [{ role: 'user', parts: [{ text: user }] }],
-        generationConfig: {
-          temperature: 0.2,
-          maxOutputTokens: 2048,
-          ...(json ? { responseMimeType: 'application/json' } : {}),
-        },
-      }),
-    }
-  )) as {
-    candidates?: Array<{
-      content?: { parts?: Array<{ text?: string }> };
-      finishReason?: string;
-    }>;
-    promptFeedback?: { blockReason?: string };
-  };
-
-  const candidate = data.candidates?.[0];
-  const text = candidate?.content?.parts
-    ?.map((part) => part.text ?? '')
-    .join('')
-    .trim();
-
-  if (!text) {
-    const reason =
-      data.promptFeedback?.blockReason ??
-      candidate?.finishReason ??
-      'UNKNOWN';
-
-    throw new AiError(
-      'bad_response',
-      `Gemini returned no text (reason: ${reason}).`
-    );
+  constructor(
+    private apiKey: string,
+    model: string,
+    maxChars: number,
+    fallbackModels: string[] = [],
+  ) {
+    super('gemini', maxChars);
+    this.models = [...new Set([model, ...fallbackModels].filter(Boolean))];
   }
 
-  return text;
-}
+  protected async complete(system: string, user: string, json: boolean): Promise<string> {
+    let lastQuotaError: AiError | undefined;
 
+    for (let i = 0; i < this.models.length; i++) {
+      const model = this.models[i];
+
+      try {
+        const data = (await http(
+          `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-goog-api-key': this.apiKey,
+            },
+            body: JSON.stringify({
+              systemInstruction: { parts: [{ text: system }] },
+              contents: [{ role: 'user', parts: [{ text: user }] }],
+              generationConfig: {
+                temperature: 0.2,
+                maxOutputTokens: 2048,
+                ...(json ? { responseMimeType: 'application/json' } : {}),
+              },
+            }),
+          }
+        )) as {
+          candidates?: Array<{
+            content?: { parts?: Array<{ text?: string }> };
+            finishReason?: string;
+          }>;
+          promptFeedback?: { blockReason?: string };
+        };
+
+        const candidate = data.candidates?.[0];
+        const text = candidate?.content?.parts
+          ?.map((part) => part.text ?? '')
+          .join('')
+          .trim();
+
+        if (!text) {
+          const reason = data.promptFeedback?.blockReason
+            ?? candidate?.finishReason
+            ?? 'UNKNOWN';
+          throw new AiError('bad_response', `Gemini returned no text (reason: ${reason}).`);
+        }
+
+        if (i > 0) console.info('[AI_FALLBACK_SUCCESS]', { model });
+        return text;
+      } catch (error) {
+        if (!(error instanceof AiError) || error.code !== 'quota') {
+          throw error;
+        }
+
+        lastQuotaError = error;
+        if (i < this.models.length - 1) {
+          console.warn('[AI_FALLBACK]', {
+            failedModel: model,
+            nextModel: this.models[i + 1],
+            reason: 'quota',
+          });
+        }
+      }
+    }
+
+    throw lastQuotaError ?? new AiError('quota', 'All configured Gemini models exhausted their quota.');
+  }
 }
 
 export class OpenAiCompatibleProvider extends LlmProvider {
@@ -354,6 +383,7 @@ export function createAiProvider(cfg: Config): AiProvider {
         cfg.AI_API_KEY,
         cfg.AI_MODEL || 'gemini-2.0-flash',
         cfg.AI_MAX_INPUT_CHARS,
+        cfg.AI_FALLBACK_MODELS.split(',').map((model) => model.trim()).filter(Boolean),
       );
 
     case 'openai-compatible':

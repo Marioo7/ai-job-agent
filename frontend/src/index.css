@@ -2,12 +2,58 @@
 @tailwind components;
 @tailwind utilities;
 
-:root { color-scheme: light; }
-html, body, #root { height: 100%; }
-body { @apply bg-paper text-ink font-sans antialiased; line-height: 1.6; }
-:focus-visible { outline: 2px solid #0e6b6e; outline-offset: 2px; }
-@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
-textarea, input, select { @apply w-full rounded border border-line bg-white px-3 py-2 text-sm; }
-textarea:disabled, input:disabled { @apply bg-paper text-mute; }
-input[type='checkbox'], input[type='radio'] { width: auto; }
-input[type='range'] { padding: 0; }
+:root {
+  color-scheme: light;
+  font-family: 'Cairo', sans-serif;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-paper text-ink antialiased;
+  font-family: 'Cairo', sans-serif;
+  line-height: 1.8;
+}
+
+button,
+input,
+textarea,
+select {
+  font-family: 'Cairo', sans-serif;
+}
+
+:focus-visible {
+  outline: 2px solid #0e6b6e;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+textarea,
+input,
+select {
+  @apply w-full rounded border border-line bg-white px-3 py-2 text-sm;
+}
+
+textarea:disabled,
+input:disabled {
+  @apply bg-paper text-mute;
+}
+
+input[type='checkbox'],
+input[type='radio'] {
+  width: auto;
+}
+
+input[type='range'] {
+  padding: 0;
+}

@@ -14,11 +14,32 @@ export interface WorkerOptions {
   now?: () => Date;
 }
 
+
 const sleep = (ms: number, signal: AbortSignal) =>
   new Promise<void>((resolve) => {
-    const t = setTimeout(resolve, ms);
-    signal.addEventListener('abort', () => { clearTimeout(t); resolve(); }, { once: true });
+    if (signal.aborted) {
+      resolve();
+      return;
+    }
+
+    const cleanup = () => {
+      clearTimeout(t);
+      signal.removeEventListener('abort', onAbort);
+    };
+
+    const onAbort = () => {
+      cleanup();
+      resolve();
+    };
+
+    const t = setTimeout(() => {
+      signal.removeEventListener('abort', onAbort);
+      resolve();
+    }, ms);
+
+    signal.addEventListener('abort', onAbort, { once: true });
   });
+
 
 /**
  * Long-running monitor. Every tick it: reconnects if needed (exponential backoff), resolves new sources,

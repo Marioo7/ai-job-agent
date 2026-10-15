@@ -25,6 +25,7 @@ export const configSchema = z.object({
   AI_PROVIDER: z.enum(['none', 'mock', 'gemini', 'openai-compatible']).default('mock'),
   AI_API_KEY: z.string().optional(),
   AI_MODEL: z.string().default(''),
+  AI_FALLBACK_MODELS: z.string().default(''),
   AI_BASE_URL: z.string().default('https://api.openai.com/v1'),
   AI_MAX_INPUT_CHARS: z.coerce.number().int().min(500).default(6000),
   AI_DAILY_CALL_CAP: z.coerce.number().int().min(0).default(200),
